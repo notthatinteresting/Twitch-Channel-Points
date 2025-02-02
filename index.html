@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitch Channel Points Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Twitch Channel Points Tracker</h1>
+        <p>Enter your Twitch Auth Token to get your channel points:</p>
+
+        <input type="text" id="authToken" placeholder="Enter your Twitch Auth Token" />
+        <button onclick="fetchChannelPoints()">Fetch Channel Points</button>
+
+        <table id="pointsTable">
+            <thead>
+                <tr>
+                    <th>Channel Name</th>
+                    <th>Channel Points</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be populated here dynamically -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
