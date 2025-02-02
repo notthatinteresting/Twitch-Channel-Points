@@ -10,7 +10,7 @@ async function fetchChannelPoints() {
     // Set up the headers for the request
     const headers = {
         'Authorization': `Bearer ${authToken}`,
-        'Client-Id': 'YOUR_TWITCH_CLIENT_ID' // Replace this with your actual Twitch Client ID
+        'Client-Id': 'jlj5h3ie7t4q1p6oxft1asrum1jl55' // Replace this with your actual Twitch Client ID
     };
 
     try {
