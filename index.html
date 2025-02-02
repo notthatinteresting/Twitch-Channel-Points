@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Twitch Channel Points Tracker</title>
+    <title>Twitch Channel Points</title>
 </head>
 <body>
-    <h1>Twitch Channel Points Tracker</h1>
-    <button onclick="loginWithTwitch()">Login with Twitch</button>
+    <h1>Welcome to the Twitch Channel Points Tracker</h1>
+    <!-- The button to start the Twitch login/OAuth flow -->
+    <button id="login-button">Login with Twitch</button>
 
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55';
-        const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html';  // Callback page
+        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55';  // Replace with your actual Twitch Client ID
+        const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html'; // This is where Twitch will redirect after login
+        const SCOPE = 'user:read:follows';  // The permission you need to access the user's followed channels
 
-        function loginWithTwitch() {
-            const OAUTH_URL = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=token&scope=user:read:follows`;
-            window.location.href = OAUTH_URL; // Redirect to Twitch login page
-        }
+        document.getElementById('login-button').addEventListener('click', () => {
+            // Start the Twitch OAuth login flow
+            window.location.href = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=token&scope=${SCOPE}`;
+        });
     </script>
 </body>
 </html>
