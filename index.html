@@ -4,31 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Twitch Channel Points Tracker</title>
-    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Twitch Channel Points Tracker</h1>
-        <p>Click the button below to log in with Twitch:</p>
-        <button onclick="loginWithTwitch()">Login with Twitch</button>
-        
-        <div id="loginMessage" style="display:none;">
-            <p>Logging in...</p>
-        </div>
+    <h1>Twitch Channel Points Tracker</h1>
+    <button onclick="loginWithTwitch()">Login with Twitch</button>
 
-        <table id="pointsTable">
-            <thead>
-                <tr>
-                    <th>Channel Name</th>
-                    <th>Channel Points</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Rows will be populated here dynamically -->
-            </tbody>
-        </table>
-    </div>
+    <script>
+        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55';
+        const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html';  // Callback page
 
-    <script src="script.js"></script>
+        function loginWithTwitch() {
+            const OAUTH_URL = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=token&scope=user:read:follows`;
+            window.location.href = OAUTH_URL; // Redirect to Twitch login page
+        }
+    </script>
 </body>
 </html>
