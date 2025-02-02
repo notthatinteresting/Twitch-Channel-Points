@@ -1,97 +1,68 @@
-// server.js (Backend for OAuth Authentication with Twitch)
-
-const express = require('express');
-const axios = require('axios');
-const dotenv = require('dotenv');
-dotenv.config();
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-// OAuth redirect URL
+const CLIENT_ID = 'YOUR_TWITCH_CLIENT_ID'; // Replace with your Client ID
+const REDIRECT_URI = 'https://your-username.github.io/callback'; // Your redirect URI (e.g., for GitHub Pages)
 const OAUTH_URL = 'https://id.twitch.tv/oauth2/authorize';
-const TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
+const API_BASE_URL = 'https://api.twitch.tv/helix/';
 
-// Frontend route
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
-});
+// Function to initiate the login process (OAuth)
+function loginWithTwitch() {
+    const authUrl = `${OAUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=token&scope=user:read:follows`;
+    window.location.href = authUrl;  // Redirect to Twitch for login
+}
 
-// OAuth login route
-app.get('/auth/login', (req, res) => {
-    const authUrl = `${OAUTH_URL}?client_id=${process.env.CLIENT_ID}&redirect_uri=${process.env.REDIRECT_URI}&response_type=code&scope=user:read:follows`;
-    res.redirect(authUrl);
-});
+// Function to parse the URL and get the access token
+function getAccessTokenFromUrl() {
+    const params = new URLSearchParams(window.location.hash.replace('#', '?'));
+    const accessToken = params.get('access_token');
+    return accessToken;
+}
 
-// OAuth callback route (Twitch will redirect here after user login)
-app.get('/auth/callback', async (req, res) => {
-    const { code } = req.query;
-
-    if (!code) {
-        return res.send('Error: No code received.');
+// Function to fetch the user ID and followed channels once logged in
+async function fetchChannelPoints() {
+    const accessToken = getAccessTokenFromUrl();
+    
+    if (!accessToken) {
+        alert('Error: Missing access token.');
+        return;
     }
 
-    // Exchange the authorization code for an access token
-    try {
-        const tokenResponse = await axios.post(TOKEN_URL, null, {
-            params: {
-                client_id: process.env.CLIENT_ID,
-                client_secret: process.env.CLIENT_SECRET,
-                code,
-                grant_type: 'authorization_code',
-                redirect_uri: process.env.REDIRECT_URI
-            }
-        });
-
-        const { access_token, refresh_token, expires_in } = tokenResponse.data;
-
-        // Store the token in the session or a database
-        req.session.token = access_token;
-        
-        res.redirect(`/dashboard?access_token=${access_token}`);
-    } catch (error) {
-        console.error('Error during token exchange:', error);
-        res.send('Error during OAuth process.');
-    }
-});
-
-// Dashboard route to view channel points
-app.get('/dashboard', async (req, res) => {
-    const { access_token } = req.query;
-
-    if (!access_token) {
-        return res.redirect('/');
-    }
+    const headers = {
+        'Authorization': `Bearer ${accessToken}`,
+        'Client-Id': CLIENT_ID
+    };
 
     try {
-        // Fetch user details (using the access token)
-        const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
-            headers: {
-                Authorization: `Bearer ${access_token}`,
-                'Client-Id': process.env.CLIENT_ID
-            }
-        });
-
-        const userData = userResponse.data;
+        // Step 1: Get the user's ID
+        const userResponse = await fetch(`${API_BASE_URL}users`, { headers });
+        const userData = await userResponse.json();
         const userId = userData.data[0].id;
 
-        // Fetch followed channels (again, using the access token)
-        const followsResponse = await axios.get(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, {
-            headers: {
-                Authorization: `Bearer ${access_token}`,
-                'Client-Id': process.env.CLIENT_ID
-            }
+        // Step 2: Get the channels the user is following
+        const followsResponse = await fetch(`${API_BASE_URL}users/follows?from_id=${userId}`, { headers });
+        const followsData = await followsResponse.json();
+        
+        const tableBody = document.getElementById('pointsTable').getElementsByTagName('tbody')[0];
+        tableBody.innerHTML = '';  // Clear any existing rows
+
+        // Step 3: Display the followed channels (mock points for now)
+        followsData.data.forEach((channel) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${channel.to_name}</td>
+                <td>Loading...</td>  <!-- Mocked points -->
+            `;
+            tableBody.appendChild(row);
+
+            // Simulate channel points
+            row.cells[1].textContent = Math.floor(Math.random() * 10000);  // Replace with actual points if possible
         });
 
-        const followsData = followsResponse.data;
-        res.json(followsData.data);  // Return followed channels as JSON
     } catch (error) {
-        console.error('Error fetching user data:', error);
-        res.send('Error fetching user data.');
+        console.error('Error fetching data:', error);
+        alert('An error occurred while fetching data. Please try again later.');
     }
-});
+}
 
-// Start server
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+// Check if there's an access token in the URL and fetch data
+if (window.location.hash.includes('access_token')) {
+    fetchChannelPoints();
+}
