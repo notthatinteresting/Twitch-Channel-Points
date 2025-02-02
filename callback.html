@@ -3,20 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Callback</title>
+    <title>Redirecting...</title>
 </head>
 <body>
     <h1>Redirecting...</h1>
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55';
-        
-        // Extract access token from URL hash
+        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55';  // Replace with your actual Twitch Client ID
+        const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html';
+
+        // Extract the access token from the URL after the redirect
         const params = new URLSearchParams(window.location.hash.replace('#', '?'));
-        const accessToken = params.get('access_token');
+        const accessToken = params.get('access_token');  // This is the token you'll use to access the API
 
         if (accessToken) {
-            // Fetch the user's followed channels using the access token
+            console.log("Access Token:", accessToken);
+
+            // Now you can use the access token to make API requests
             fetchUserData(accessToken);
+        } else {
+            console.error('Access token not found!');
         }
 
         async function fetchUserData(token) {
@@ -26,18 +31,20 @@
             };
 
             try {
-                // Fetch the user's data
+                // Step 1: Fetch the user's data (their Twitch user info)
                 const userResponse = await fetch('https://api.twitch.tv/helix/users', { headers });
                 const userData = await userResponse.json();
+                console.log("User Data:", userData);
+
                 const userId = userData.data[0].id;
 
-                // Fetch followed channels
+                // Step 2: Fetch the channels that the user follows
                 const followsResponse = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
+                console.log("Followed Channels:", followsData);
 
-                // Redirect to the index or show the results
-                console.log(followsData); // Log the followed channels data
-                // You can now display this data on your page or redirect them to the main page
+                // You can process and display this data, or just redirect the user back
+                window.location.href = "https://notthatinteresting.github.io/Twitch-Channel-Points/index.html";  // Redirecting back to main page
             } catch (error) {
                 console.error('Error fetching data:', error);
             }
