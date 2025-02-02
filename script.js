@@ -1,5 +1,5 @@
-const CLIENT_ID = 'YOUR_TWITCH_CLIENT_ID'; // Replace with your Client ID
-const REDIRECT_URI = 'https://your-username.github.io/callback'; // Your redirect URI (e.g., for GitHub Pages)
+const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your Client ID
+const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/'; // Your redirect URI (e.g., for GitHub Pages)
 const OAUTH_URL = 'https://id.twitch.tv/oauth2/authorize';
 const API_BASE_URL = 'https://api.twitch.tv/helix/';
 
