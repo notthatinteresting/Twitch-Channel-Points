@@ -3,28 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirecting...</title>
+    <title>Callback - Twitch OAuth</title>
 </head>
 <body>
-    <h1>Redirecting...</h1>
+    <h1>Twitch Authentication - Callback</h1>
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55';  // Replace with your actual Twitch Client ID
+        // Get the token from the URL fragment
+        const urlParams = new URLSearchParams(window.location.hash.slice(1)); // Strip the '#' from the URL
+        const accessToken = urlParams.get('access_token');
 
-        // Extract the access token from the URL hash
-        const params = new URLSearchParams(window.location.hash.replace('#', '?'));
-        const accessToken = params.get('access_token');  // This is the token you'll use to access the API
-
+        // Check if we have the access_token
         if (accessToken) {
-            console.log("Access Token:", accessToken);
-
             // Store the access token in localStorage
             localStorage.setItem('accessToken', accessToken);
-
-            // Redirect back to the main page (index.html)
-            window.location.href = "https://notthatinteresting.github.io/Twitch-Channel-Points/index.html";
+            console.log("Access token stored in localStorage:", accessToken);
+            // Redirect back to the main page
+            window.location.href = 'https://notthatinteresting.github.io/Twitch-Channel-Points/index.html';
         } else {
-            console.error('Access token not found!');
-            // Optionally, show an error or redirect the user somewhere else
+            // If no token, show error message
+            document.body.innerHTML = '<h2>Error: No access token found. Please try again.</h2>';
         }
     </script>
 </body>
