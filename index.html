@@ -40,17 +40,55 @@
             };
 
             try {
-                // Fetch the user's data (for example, followed channels)
+                // Fetch the user's data (user info)
                 const userResponse = await fetch('https://api.twitch.tv/helix/users', { headers });
                 const userData = await userResponse.json();
                 console.log("User Data:", userData);
 
-                // Display the user data
-                document.getElementById('content').innerHTML = `<p>Logged in as: ${userData.data[0].login}</p>`;
+                // Check if the user has data and display their username
+                if (userData.data && userData.data.length > 0) {
+                    const userName = userData.data[0].login;
+                    document.getElementById('content').innerHTML = `<p>Logged in as: ${userName}</p>`;
 
-                // You can fetch more data or display followed channels here
+                    // Now fetch the user's followed channels
+                    fetchFollowedChannels(token);
+                } else {
+                    document.getElementById('content').innerHTML = `<p>Couldn't fetch user data.</p>`;
+                }
+
             } catch (error) {
-                console.error('Error fetching data:', error);
+                console.error('Error fetching user data:', error);
+                document.getElementById('content').innerHTML = `<p>Error fetching user data. Please try again.</p>`;
+            }
+        }
+
+        async function fetchFollowedChannels(token) {
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Client-Id': CLIENT_ID
+            };
+
+            try {
+                // Fetch the followed channels (user's follows)
+                const followsResponse = await fetch('https://api.twitch.tv/helix/users/follows?from_id=USER_ID', { headers });
+                const followsData = await followsResponse.json();
+                console.log("Followed Channels:", followsData);
+
+                // Check if followed channels exist and display them
+                if (followsData.data && followsData.data.length > 0) {
+                    let followsListHTML = '<h3>Your Followed Channels:</h3><ul>';
+                    followsData.data.forEach(channel => {
+                        followsListHTML += `<li>${channel.to_name}</li>`;
+                    });
+                    followsListHTML += '</ul>';
+                    document.getElementById('content').innerHTML += followsListHTML;
+                } else {
+                    document.getElementById('content').innerHTML += `<p>You are not following any channels.</p>`;
+                }
+
+            } catch (error) {
+                console.error('Error fetching followed channels:', error);
+                document.getElementById('content').innerHTML += `<p>Error fetching followed channels. Please try again.</p>`;
             }
         }
     </script>
