@@ -1,63 +1,97 @@
-// Function to fetch channel points for the logged-in user
-async function fetchChannelPoints() {
-    const authToken = document.getElementById('authToken').value;
+// server.js (Backend for OAuth Authentication with Twitch)
 
-    if (!authToken) {
-        alert("Please enter your Twitch Auth Token.");
-        return;
+const express = require('express');
+const axios = require('axios');
+const dotenv = require('dotenv');
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// OAuth redirect URL
+const OAUTH_URL = 'https://id.twitch.tv/oauth2/authorize';
+const TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
+
+// Frontend route
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
+
+// OAuth login route
+app.get('/auth/login', (req, res) => {
+    const authUrl = `${OAUTH_URL}?client_id=${process.env.CLIENT_ID}&redirect_uri=${process.env.REDIRECT_URI}&response_type=code&scope=user:read:follows`;
+    res.redirect(authUrl);
+});
+
+// OAuth callback route (Twitch will redirect here after user login)
+app.get('/auth/callback', async (req, res) => {
+    const { code } = req.query;
+
+    if (!code) {
+        return res.send('Error: No code received.');
     }
 
-    // Set up the headers for the request
-    const headers = {
-        'Authorization': `Bearer ${authToken}`,
-        'Client-Id': 'jlj5h3ie7t4q1p6oxft1asrum1jl55' // Replace this with your actual Twitch Client ID
-    };
+    // Exchange the authorization code for an access token
+    try {
+        const tokenResponse = await axios.post(TOKEN_URL, null, {
+            params: {
+                client_id: process.env.CLIENT_ID,
+                client_secret: process.env.CLIENT_SECRET,
+                code,
+                grant_type: 'authorization_code',
+                redirect_uri: process.env.REDIRECT_URI
+            }
+        });
+
+        const { access_token, refresh_token, expires_in } = tokenResponse.data;
+
+        // Store the token in the session or a database
+        req.session.token = access_token;
+        
+        res.redirect(`/dashboard?access_token=${access_token}`);
+    } catch (error) {
+        console.error('Error during token exchange:', error);
+        res.send('Error during OAuth process.');
+    }
+});
+
+// Dashboard route to view channel points
+app.get('/dashboard', async (req, res) => {
+    const { access_token } = req.query;
+
+    if (!access_token) {
+        return res.redirect('/');
+    }
 
     try {
-        // Step 1: Get the user ID
-        const userResponse = await fetch('https://api.twitch.tv/helix/users', { headers });
-        const userData = await userResponse.json();
-        
-        if (userData.data && userData.data[0]) {
-            const userId = userData.data[0].id;
-            console.log('User ID:', userId);
-
-            // Step 2: Get the list of channels the user follows
-            const followsResponse = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, { headers });
-            const followsData = await followsResponse.json();
-            const channels = followsData.data;
-
-            // Clear the previous data in the table
-            const tableBody = document.getElementById('pointsTable').getElementsByTagName('tbody')[0];
-            tableBody.innerHTML = '';
-
-            // Step 3: Populate the table with the channels and mock points
-            for (const channel of channels) {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${channel.to_name}</td>
-                    <td>Loading...</td> <!-- Placeholder for channel points -->
-                `;
-                tableBody.appendChild(row);
-
-                // Get channel points (you may need a workaround here since Twitch doesn't expose direct points)
-                await getChannelPoints(channel.to_id, row);
+        // Fetch user details (using the access token)
+        const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
+            headers: {
+                Authorization: `Bearer ${access_token}`,
+                'Client-Id': process.env.CLIENT_ID
             }
+        });
 
-        } else {
-            alert('Error fetching user data. Please check your OAuth token.');
-        }
+        const userData = userResponse.data;
+        const userId = userData.data[0].id;
+
+        // Fetch followed channels (again, using the access token)
+        const followsResponse = await axios.get(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, {
+            headers: {
+                Authorization: `Bearer ${access_token}`,
+                'Client-Id': process.env.CLIENT_ID
+            }
+        });
+
+        const followsData = followsResponse.data;
+        res.json(followsData.data);  // Return followed channels as JSON
     } catch (error) {
-        console.error('Error fetching data:', error);
-        alert('An error occurred while fetching data. Please try again later.');
+        console.error('Error fetching user data:', error);
+        res.send('Error fetching user data.');
     }
-}
+});
 
-// Function to get the channel points for a specific channel (hypothetical)
-async function getChannelPoints(channelId, row) {
-    // For demonstration, we'll mock the points. You will need to get the actual points data.
-    const mockPoints = Math.floor(Math.random() * 10000); // Simulate channel points
-
-    // Update the row with the mock points
-    row.cells[1].textContent = mockPoints;
-}
+// Start server
+app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+});
