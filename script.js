@@ -10,33 +10,43 @@ async function fetchChannelPoints() {
     // Set up the headers for the request
     const headers = {
         'Authorization': `Bearer ${authToken}`,
-        'Client-Id': 'jlj5h3ie7t4q1p6oxft1asrum1jl55' // Replace this with your actual Twitch Client ID
+        'Client-Id': 'YOUR_TWITCH_CLIENT_ID' // Replace this with your actual Twitch Client ID
     };
 
     try {
-        // First, get the list of channels the user follows
-        const followsResponse = await fetch('https://api.twitch.tv/helix/users/follows?from_id=YOUR_USER_ID', { headers });
-        const followsData = await followsResponse.json();
-        const channels = followsData.data;
+        // Step 1: Get the user ID
+        const userResponse = await fetch('https://api.twitch.tv/helix/users', { headers });
+        const userData = await userResponse.json();
+        
+        if (userData.data && userData.data[0]) {
+            const userId = userData.data[0].id;
+            console.log('User ID:', userId);
 
-        // Now, we will create a table to display the channels and their points
-        const tableBody = document.getElementById('pointsTable').getElementsByTagName('tbody')[0];
-        tableBody.innerHTML = ''; // Clear any previous data
+            // Step 2: Get the list of channels the user follows
+            const followsResponse = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, { headers });
+            const followsData = await followsResponse.json();
+            const channels = followsData.data;
 
-        for (const channel of channels) {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${channel.to_name}</td>
-                <td>Loading...</td> <!-- Will replace with actual points -->
-            `;
-            tableBody.appendChild(row);
+            // Clear the previous data in the table
+            const tableBody = document.getElementById('pointsTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
 
-            // For each channel, we'll try to get the channel points (this part is hypothetical, adjust based on real API)
-            // You need to use your own method to get channel points if Twitch does not provide a direct endpoint.
-            // For example, you might track the points manually elsewhere.
-            await getChannelPoints(channel.to_id, row);
+            // Step 3: Populate the table with the channels and mock points
+            for (const channel of channels) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${channel.to_name}</td>
+                    <td>Loading...</td> <!-- Placeholder for channel points -->
+                `;
+                tableBody.appendChild(row);
+
+                // Get channel points (you may need a workaround here since Twitch doesn't expose direct points)
+                await getChannelPoints(channel.to_id, row);
+            }
+
+        } else {
+            alert('Error fetching user data. Please check your OAuth token.');
         }
-
     } catch (error) {
         console.error('Error fetching data:', error);
         alert('An error occurred while fetching data. Please try again later.');
