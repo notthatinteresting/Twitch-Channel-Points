@@ -45,13 +45,14 @@
                 const userData = await userResponse.json();
                 console.log("User Data:", userData);
 
-                // Check if the user has data and display their username
+                // Check if the user data is available
                 if (userData.data && userData.data.length > 0) {
+                    const userId = userData.data[0].id;  // Get the user ID
                     const userName = userData.data[0].login;
                     document.getElementById('content').innerHTML = `<p>Logged in as: ${userName}</p>`;
 
-                    // Now fetch the user's followed channels
-                    fetchFollowedChannels(token);
+                    // Now fetch the user's followed channels using the user ID
+                    fetchFollowedChannels(token, userId);
                 } else {
                     document.getElementById('content').innerHTML = `<p>Couldn't fetch user data.</p>`;
                 }
@@ -62,15 +63,15 @@
             }
         }
 
-        async function fetchFollowedChannels(token) {
+        async function fetchFollowedChannels(token, userId) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
                 'Client-Id': CLIENT_ID
             };
 
             try {
-                // Fetch the followed channels (user's follows)
-                const followsResponse = await fetch('https://api.twitch.tv/helix/users/follows?from_id=USER_ID', { headers });
+                // Fetch the followed channels for the logged-in user using their user ID
+                const followsResponse = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
                 console.log("Followed Channels:", followsData);
 
