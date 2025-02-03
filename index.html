@@ -60,7 +60,7 @@
             }
         }
 
-        // Fetch followed channels using the correct /channels/followed endpoint
+        // Fetch followed channels using the /channels/followed endpoint
         async function fetchFollowedChannels(token, userId) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
@@ -71,13 +71,16 @@
                 // Fetch followed channels (using the correct API endpoint)
                 const followsResponse = await fetch(`https://api.twitch.tv/helix/channels/followed?user_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
-                
-                console.log("Followed Channels Response:", followsData);  // Log the full response
+
+                console.log("Followed Channels Response:", followsData);  // Log the full response to check the structure
 
                 if (followsData.data && followsData.data.length > 0) {
                     let followsListHTML = '<h3>Your Followed Channels:</h3><ul>';
                     followsData.data.forEach(follow => {
-                        followsListHTML += `<li>${follow.user_name} - ${follow.title}</li>`;  // Correctly access the channel name
+                        console.log("Follow:", follow);  // Log each individual channel to check its structure
+
+                        // Use broadcaster_name and title
+                        followsListHTML += `<li>${follow.broadcaster_name} - ${follow.title}</li>`;
                     });
                     followsListHTML += '</ul>';
                     document.getElementById('content').innerHTML = followsListHTML;
@@ -87,7 +90,6 @@
 
                 // Check if there is more data (pagination)
                 if (followsData.pagination && followsData.pagination.cursor) {
-                    // More pages are available, fetch them
                     fetchNextPage(token, followsData.pagination.cursor, userId);
                 }
             } catch (error) {
@@ -105,7 +107,7 @@
 
             try {
                 // Fetch the next page using the pagination cursor
-                const followsResponse = await fetch(`https://api.twitch.tv/helix/channels/followed?user_id=${userId}&after=${cursor}`, { headers });
+                const followsResponse = await fetch(`https://api.twitch.tv/helix/channels/followed?after=${cursor}&user_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
 
                 console.log("Followed Channels Next Page:", followsData);  // Log the full response for the next page
@@ -113,12 +115,12 @@
                 if (followsData.data && followsData.data.length > 0) {
                     let followsListHTML = '<h3>Your Followed Channels (Continued):</h3><ul>';
                     followsData.data.forEach(follow => {
-                        followsListHTML += `<li>${follow.user_name} - ${follow.title}</li>`;  // Correctly access the channel name
+                        followsListHTML += `<li>${follow.broadcaster_name} - ${follow.title}</li>`;
                     });
                     followsListHTML += '</ul>';
                     document.getElementById('content').innerHTML += followsListHTML;
                 }
-                
+
                 // If there's more data, continue fetching
                 if (followsData.pagination && followsData.pagination.cursor) {
                     fetchNextPage(token, followsData.pagination.cursor, userId);
