@@ -134,8 +134,34 @@
                 </tr>`;
         }
 
+        // This is the updated getChannelPoints function using GraphQL
         async function getChannelPoints(broadcasterId) {
-            return Math.floor(Math.random() * 50000); // Placeholder random points
+            const query = `
+                query {
+                    channelPoints(broadcasterId: "${broadcasterId}") {
+                        points
+                    }
+                }
+            `;
+
+            const response = await fetch('https://gql.twitch.tv', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Client-Id': CLIENT_ID,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query })
+            });
+
+            const data = await response.json();
+
+            if (data.errors) {
+                console.error('Error fetching channel points:', data.errors);
+                return 0; // Return 0 if an error occurs
+            }
+
+            return data.data.channelPoints.points || 0;
         }
 
         function sortTable(columnIndex) {
