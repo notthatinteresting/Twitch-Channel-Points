@@ -4,28 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Twitch Channel Points Tracker</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { text-align: center; }
-        .button-container { text-align: center; margin-bottom: 20px; }
-        button { padding: 10px; font-size: 16px; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-        th { background-color: #f4f4f4; cursor: pointer; }
-        th:hover { background-color: #e0e0e0; }
-    </style>
 </head>
 <body>
     <h1>Twitch Channel Points Tracker</h1>
-    <div class="button-container">
-        <button id="login-button" style="display:none;">Login with Twitch</button>
-    </div>
-    
+    <button id="login-button">Login with Twitch</button>
+
     <table id="channels-table">
         <thead>
             <tr>
-                <th onclick="sortTable(0)">Channel</th>
-                <th onclick="sortTable(1)">Points</th>
+                <th>Channel</th>
+                <th>Points</th>
             </tr>
         </thead>
         <tbody id="channels-body"></tbody>
@@ -37,8 +25,6 @@
         const SCOPE = 'user:read:follows';
 
         let accessToken = localStorage.getItem('accessToken') || new URLSearchParams(window.location.hash.substring(1)).get("access_token");
-        let channelsData = [];
-        let sortDirection = [1, -1]; // 1 = ascending, -1 = descending
 
         if (accessToken) {
             localStorage.setItem('accessToken', accessToken);
@@ -52,8 +38,8 @@
         });
 
         async function fetchUserId(token) {
-            const url = 'https://api.twitch.tv/helix/users';
-            
+            const url = `https://api.twitch.tv/helix/channels/followed`;
+
             try {
                 const response = await fetch(url, {
                     headers: {
@@ -62,19 +48,24 @@
                     }
                 });
                 const data = await response.json();
-                
-                const userId = data.data[0].id;
-                fetchFollowedChannels(userId, token);
+
+                // Log the data for debugging purposes
+                console.log(data);
+
+                if (data.data && data.data[0] && data.data[0].user_id) {
+                    const userId = data.data[0].user_id;
+                    console.log('User ID:', userId);
+                    fetchFollowedChannels(userId, token);
+                } else {
+                    console.error('Failed to retrieve user data');
+                }
             } catch (error) {
                 console.error('Error fetching user ID:', error);
-                showError('Error fetching user ID.');
             }
         }
 
         async function fetchFollowedChannels(userId, token) {
-            let url = `https://api.twitch.tv/helix/channels/followed?from_id=${userId}&first=100`;  // Use the correct endpoint
-            let allChannels = [];
-            let cursor = null;
+            const url = `https://api.twitch.tv/helix/channels/followed?from_id=${userId}&first=100`;
 
             try {
                 const response = await fetch(url, {
@@ -86,27 +77,22 @@
                 const data = await response.json();
 
                 if (data.data?.length > 0) {
-                    allChannels.push(...data.data);
+                    data.data.forEach(channel => {
+                        // Process each followed channel here
+                        console.log(channel.broadcaster_name);
+                        getChannelPoints(channel.broadcaster_name);  // You can call the function to get points
+                    });
+                } else {
+                    console.log('No followed channels found');
                 }
-
-                cursor = data.pagination?.cursor;
-                url = cursor ? `https://api.twitch.tv/helix/channels/followed?from_id=${userId}&first=100&after=${cursor}` : null;
-
-                // Fetch points for each followed channel using GraphQL query
-                for (const channel of allChannels) {
-                    getChannelPoints(channel.broadcaster_name); // Use the 'broadcaster_name' for the followed channel
-                }
-
             } catch (error) {
                 console.error('Error fetching followed channels:', error);
-                showError('Error fetching followed channels.');
             }
         }
 
         async function getChannelPoints(channel) {
-            const oauthToken = localStorage.getItem('accessToken'); // Get your stored access token
-
-            let headers = new Headers();
+            const oauthToken = localStorage.getItem('accessToken');
+            const headers = new Headers();
             headers.append("client-id", CLIENT_ID);
             headers.append("authorization", `OAuth ${oauthToken}`);
             headers.append("Content-Type", "application/json");
@@ -138,39 +124,10 @@
                 const channelName = data['community']['displayName'];
                 const points = data['community']['channel']['self']['communityPoints']['balance'];
 
-                // Update the channelsData and table with the points
-                channelsData.push({ name: channelName, points });
-                updateTable();
-
+                console.log(`${channelName}: ${points} points`);
             } catch (error) {
                 console.error("Error fetching channel points:", error);
-                showError('Error fetching channel points.');
             }
-        }
-
-        function updateTable() {
-            const tbody = document.getElementById('channels-body');
-            tbody.innerHTML = '';
-            channelsData.forEach(channel => {
-                tbody.innerHTML += `<tr><td>${channel.name}</td><td>${channel.points}</td></tr>`;
-            });
-        }
-
-        function sortTable(columnIndex) {
-            channelsData.sort((a, b) => {
-                if (columnIndex === 0) {
-                    return sortDirection[columnIndex] * a.name.localeCompare(b.name);
-                } else {
-                    return sortDirection[columnIndex] * (b.points - a.points);
-                }
-            });
-
-            sortDirection[columnIndex] *= -1; // Toggle sorting direction
-            updateTable();
-        }
-
-        function showError(message) {
-            document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">${message}</td></tr>`;
         }
     </script>
 </body>
