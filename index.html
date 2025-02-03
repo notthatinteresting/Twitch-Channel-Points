@@ -57,10 +57,10 @@
     </table>
 
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your actual Twitch Client ID
+        const CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko'; // Replace with your actual Twitch Client ID
         const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html';
         const SCOPE = 'user:read:follows';
-
+        
         let accessToken = localStorage.getItem('accessToken') || getAccessTokenFromUrl();
 
         if (accessToken) {
@@ -114,7 +114,7 @@
                 if (data.data?.length > 0) {
                     document.getElementById('channels-body').innerHTML = '';
                     for (const follow of data.data) {
-                        await displayChannel(follow.broadcaster_name);
+                        displayChannel(follow.broadcaster_name);
                     }
                 } else {
                     document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">You are not following any channels.</td></tr>`;
@@ -125,24 +125,20 @@
             }
         }
 
-        async function displayChannel(channelName) {
-            try {
-                const points = await getChannelPoints(channelName);
-                const table = document.getElementById('channels-body');
-                const row = table.insertRow();
-                const channelColumn = row.insertCell(0);
-                const pointColumn = row.insertCell(1);
-                channelColumn.innerHTML = `<strong>${channelName}</strong>`;
-                pointColumn.innerHTML = points;
-            } catch (error) {
-                console.error(`Error fetching points for ${channelName}:`, error);
-            }
+        async function displayChannel(name) {
+            const channelPoints = await getChannelPoints(name);
+            document.getElementById('channels-body').innerHTML += `
+                <tr>
+                    <td>${name}</td>
+                    <td>${channelPoints}</td>
+                </tr>`;
         }
 
         async function getChannelPoints(channel) {
             let headers = new Headers();
-            headers.append("client-id", "kimne78kx3ncx6brgo4mv6wki5h1ko");  // Your Twitch Client ID
+            headers.append("client-id", CLIENT_ID);  // Your Twitch Client ID
             headers.append("authorization", `OAuth ${accessToken}`);  // Use the stored access token
+            headers.append("Content-Type", "application/json");
 
             const body = JSON.stringify({
                 "operationName": "ChannelPointsContext",
@@ -170,12 +166,22 @@
             try {
                 const response = await fetch("https://gql.twitch.tv/gql", fetchOptions);
                 const result = await response.json();
-                const data = result.data;
-                const points = data.community.channel.self.communityPoints.balance;
-                return points;
+
+                // Debugging: Log the full result to inspect the data
+                console.log(result);
+
+                // Check if the structure is valid and contains the necessary data
+                if (result?.data?.community?.channel?.self?.communityPoints?.balance !== undefined) {
+                    const points = result.data.community.channel.self.communityPoints.balance;
+                    return points;
+                } else {
+                    console.error("Expected data structure not found:", result);
+                    return "Error fetching points"; // Return an error message if the structure is not as expected
+                }
+
             } catch (error) {
                 console.error("Error fetching channel points:", error);
-                return "Error";
+                return "Error fetching points";
             }
         }
 
