@@ -5,14 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Twitch Channel Points Tracker</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { text-align: center; }
-        .button-container { text-align: center; margin-bottom: 20px; }
-        button { padding: 10px; font-size: 16px; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-        th { background-color: #f4f4f4; cursor: pointer; }
-        th:hover { background-color: #e0e0e0; }
+        /* Basic styling for the grid layout */
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        #content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            justify-items: center;
+        }
+
+        .channel-card {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            width: 200px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+
+        .channel-card h3 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        .channel-card p {
+            margin: 5px 0;
+        }
+
+        .button-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .button-container button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -20,124 +57,141 @@
     <div class="button-container">
         <button id="login-button" style="display:none;">Login with Twitch</button>
     </div>
-    
-    <table id="channels-table">
-        <thead>
-            <tr>
-                <th onclick="sortTable(0)">Channel</th>
-                <th onclick="sortTable(1)">Points</th>
-            </tr>
-        </thead>
-        <tbody id="channels-body"></tbody>
-    </table>
+    <div id="content"></div>
 
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your Twitch Client ID
-        const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html';
-        const SCOPE = 'user:read:follows';
+        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your actual Twitch Client ID
+        const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html'; // Redirect URI after login
+        const SCOPE = 'user:read:follows'; // The permission to access user's followed channels
 
-        let accessToken = localStorage.getItem('accessToken') || new URLSearchParams(window.location.hash.substring(1)).get("access_token");
-        let channelsData = [];
-        let sortDirection = [1, -1]; // 1 = ascending, -1 = descending
+        // Check if the access token is already saved in localStorage
+        const accessToken = localStorage.getItem('accessToken');
+        console.log("Access Token from localStorage:", accessToken);
 
         if (accessToken) {
-            localStorage.setItem('accessToken', accessToken);
             fetchUserId(accessToken);
         } else {
             document.getElementById('login-button').style.display = 'inline-block';
         }
 
         document.getElementById('login-button').addEventListener('click', () => {
-            window.location.href = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=token&scope=${SCOPE}`;
+            window.location.href = https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=token&scope=${SCOPE};
         });
 
         async function fetchUserId(token) {
+            const headers = {
+                'Authorization': Bearer ${token},
+                'Client-Id': CLIENT_ID
+            };
+
             try {
-                const response = await fetch('https://api.twitch.tv/helix/users', {
-                    headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': CLIENT_ID }
-                });
-                const data = await response.json();
-                if (data.data?.length > 0) {
-                    fetchAllFollowedChannels(token, data.data[0].id);
+                const userResponse = await fetch('https://api.twitch.tv/helix/users', { headers });
+                const userData = await userResponse.json();
+                console.log("User Data:", userData);
+
+                if (userData.data && userData.data.length > 0) {
+                    const userId = userData.data[0].id;
+                    console.log("User ID:", userId);
+                    fetchFollowedChannels(token, userId);
                 } else {
-                    showError('Could not fetch user data.');
+                    document.getElementById('content').innerHTML = <p>Couldn't fetch user data.</p>;
                 }
             } catch (error) {
                 console.error('Error fetching user data:', error);
-                showError('Error fetching user data.');
+                document.getElementById('content').innerHTML = <p>Error fetching user data. Please try again.</p>;
             }
         }
 
-        async function fetchAllFollowedChannels(token, userId) {
-            let url = `https://api.twitch.tv/helix/channels/followed?user_id=${userId}&first=100`;
-            let allChannels = [];
-            let cursor = null;
+        async function fetchFollowedChannels(token, userId) {
+            const headers = {
+                'Authorization': Bearer ${token},
+                'Client-Id': CLIENT_ID
+            };
 
             try {
-                while (url) {
-                    const response = await fetch(url, {
-                        headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': CLIENT_ID }
+                const followsResponse = await fetch(https://api.twitch.tv/helix/channels/followed?user_id=${userId}, { headers });
+                const followsData = await followsResponse.json();
+
+                console.log("Followed Channels Response:", followsData);
+
+                if (followsData.data && followsData.data.length > 0) {
+                    let followsListHTML = '<h3>Your Followed Channels:</h3><div id="channels-grid">';
+                    followsData.data.forEach(follow => {
+                        // Get the broadcaster's name and channel points
+                        const name = follow.broadcaster_name;
+                        const channelPoints = follow.view_count || 0; // Assuming view_count as a placeholder for channel points
+
+                        followsListHTML += 
+                            <div class="channel-card">
+                                <h3>${name}</h3>
+                                <p>Channel Points: ${channelPoints}</p>
+                            </div>;
                     });
-                    const data = await response.json();
-                    
-                    if (data.data?.length > 0) {
-                        allChannels.push(...data.data);
-                    }
-                    
-                    cursor = data.pagination?.cursor;
-                    url = cursor ? `https://api.twitch.tv/helix/channels/followed?user_id=${userId}&first=100&after=${cursor}` : null;
+                    followsListHTML += '</div>';
+                    document.getElementById('content').innerHTML = followsListHTML;
+                } else {
+                    document.getElementById('content').innerHTML = <p>You are not following any channels.</p>;
                 }
 
-                let pointsData = getStoredChannelPoints();
-                channelsData = allChannels
-                    .map(follow => ({ 
-                        name: follow.broadcaster_name, 
-                        points: pointsData[follow.broadcaster_id] || 0
-                    }))
-                    .filter(channel => channel.points > 0) // Remove channels with 0 points
-                    .sort((a, b) => b.points - a.points) // Sort by points descending
-                    .slice(0, 100); // Keep only the top 100 channels
-
-                updateTable();
+                if (followsData.pagination && followsData.pagination.cursor) {
+                    fetchNextPage(token, followsData.pagination.cursor, userId);
+                }
             } catch (error) {
                 console.error('Error fetching followed channels:', error);
-                showError('Error fetching followed channels.');
+                document.getElementById('content').innerHTML = <p>Error fetching followed channels. Please try again.</p>;
             }
         }
 
-        function getStoredChannelPoints() {
+        async function fetchNextPage(token, cursor, userId) {
+            const headers = {
+                'Authorization': Bearer ${token},
+                'Client-Id': CLIENT_ID
+            };
+
             try {
-                let storedData = JSON.parse(localStorage.getItem('twilight-ui-store'));
-                return storedData?.channelPoints || {};
+                const followsResponse = await fetch(https://api.twitch.tv/helix/channels/followed?after=${cursor}&user_id=${userId}, { headers });
+                const followsData = await followsResponse.json();
+                console.log("Followed Channels Next Page:", followsData);
+
+                if (followsData.data && followsData.data.length > 0) {
+                    let followsListHTML = '';
+                    followsData.data.forEach(follow => {
+                        const name = follow.broadcaster_name;
+                        const channelPoints = follow.view_count || 0; // Fallback for channel points
+
+                        followsListHTML += 
+                            <div class="channel-card">
+                                <h3>${name}</h3>
+                                <p>Channel Points: ${channelPoints}</p>
+                            </div>;
+                    });
+                    document.getElementById('channels-grid').innerHTML += followsListHTML;
+                }
+
+                if (followsData.pagination && followsData.pagination.cursor) {
+                    fetchNextPage(token, followsData.pagination.cursor, userId);
+                }
             } catch (error) {
-                console.error('Error accessing stored channel points:', error);
-                return {};
+                console.error('Error fetching next page of followed channels:', error);
+                document.getElementById('content').innerHTML += <p>Error fetching next page of followed channels. Please try again.</p>;
             }
         }
 
-        function updateTable() {
-            const tbody = document.getElementById('channels-body');
-            tbody.innerHTML = '';
-            channelsData.forEach(channel => {
-                tbody.innerHTML += `<tr><td>${channel.name}</td><td>${channel.points}</td></tr>`;
-            });
-        }
+        // Sort function for sorting the channels by name or points
+        function sortChannels(by) {
+            const grid = document.getElementById('channels-grid');
+            const channels = Array.from(grid.getElementsByClassName('channel-card'));
 
-        function sortTable(columnIndex) {
-            channelsData.sort((a, b) => {
-                if (columnIndex === 0) {
-                    return sortDirection[columnIndex] * a.name.localeCompare(b.name);
-                } else {
-                    return sortDirection[columnIndex] * (b.points - a.points);
+            channels.sort((a, b) => {
+                if (by === 'name') {
+                    return a.getElementsByTagName('h3')[0].innerText.localeCompare(b.getElementsByTagName('h3')[0].innerText);
+                } else if (by === 'points') {
+                    return parseInt(b.querySelector('p').innerText.replace('Channel Points: ', '')) - parseInt(a.querySelector('p').innerText.replace('Channel Points: ', ''));
                 }
             });
 
-            sortDirection[columnIndex] *= -1; // Toggle sorting direction
-            updateTable();
-        }
-
-        function showError(message) {
-            document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">${message}</td></tr>`;
+            grid.innerHTML = ''; // Clear the grid
+            channels.forEach(channel => grid.appendChild(channel)); // Reorder the grid
         }
     </script>
 </body>
