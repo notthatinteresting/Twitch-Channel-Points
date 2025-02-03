@@ -83,7 +83,7 @@
             }
         }
 
-        // Fetch followed channels using the /users/follows endpoint (to get both online and offline)
+        // Fetch followed channels using the /channels/followed endpoint (to get both online and offline)
         async function fetchFollowedChannels(token, userId) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
@@ -91,18 +91,17 @@
             };
 
             try {
-                // Fetch followed channels
-                const followsResponse = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, { headers });
+                // Fetch followed channels from the non-documented endpoint (assumed to work as requested)
+                const followsResponse = await fetch(`https://api.twitch.tv/helix/channels/followed?user_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
 
                 console.log("Followed Channels Response:", followsData);  // Log the full response
 
                 if (followsData.data && followsData.data.length > 0) {
                     let followedChannels = followsData.data.map(follow => {
-                        // Mock channel points data (since we can't get actual points via the API)
                         return {
-                            name: follow.to_name,
-                            channel_id: follow.to_id,
+                            name: follow.name,
+                            channel_id: follow.id,
                             points: Math.floor(Math.random() * 10000),  // Mock value
                             is_online: false,  // Mocked as offline by default
                         };
@@ -119,7 +118,7 @@
             }
         }
 
-        // Check if channels are online or offline
+        // Check if channels are online or offline using the /streams endpoint
         async function checkChannelOnlineStatus(token, followedChannels) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
