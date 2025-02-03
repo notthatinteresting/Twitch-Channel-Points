@@ -21,7 +21,7 @@
 
         if (accessToken) {
             // If accessToken exists, proceed to fetch user data
-            fetchUserData(accessToken);
+            fetchFollowedStreams(accessToken);
         } else {
             // If no access token found, show the login button
             document.getElementById('login-button').style.display = 'inline-block';
@@ -32,74 +32,48 @@
             window.location.href = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=token&scope=${SCOPE}`;
         });
 
-        // Fetch user data after validating token (user's username and ID)
-        async function fetchUserData(token) {
+        // Fetch followed streams using the streams/followed endpoint
+        async function fetchFollowedStreams(token) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
                 'Client-Id': CLIENT_ID
             };
 
             try {
-                // Fetch user data (username and ID)
-                const userResponse = await fetch('https://api.twitch.tv/helix/users', { headers });
-                const userData = await userResponse.json();
-                console.log("User Data:", userData);  // Debugging: log the user data
-
-                if (userData.data && userData.data.length > 0) {
-                    const userId = userData.data[0].id;
-                    const userName = userData.data[0].login;
-                    document.getElementById('content').innerHTML = `<p>Logged in as: ${userName}</p>`;
-                    console.log("User ID:", userId);  // Debugging: log the user ID
-
-                    // Now fetch the user's followed channels using the user ID
-                    fetchFollowedChannels(token, userId);
-                } else {
-                    document.getElementById('content').innerHTML = `<p>Couldn't fetch user data.</p>`;
-                }
-            } catch (error) {
-                console.error('Error fetching user data:', error);
-                document.getElementById('content').innerHTML = `<p>Error fetching user data. Please try again.</p>`;
-            }
-        }
-
-        // Fetch followed channels using user ID
-        async function fetchFollowedChannels(token, userId) {
-            const headers = {
-                'Authorization': `Bearer ${token}`,
-                'Client-Id': CLIENT_ID
-            };
-
-            try {
-                // Fetch followed channels (using the correct API endpoint)
-                const followsResponse = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, { headers });
+                // Fetch followed streams (using the correct API endpoint)
+                const followsResponse = await fetch(`https://api.twitch.tv/helix/streams/followed`, { 
+                    headers,
+                    method: 'GET',
+                    params: { first: 100 }  // Optional: limit the results to 100 streams
+                });
                 const followsData = await followsResponse.json();
                 
-                console.log("Followed Channels Response:", followsData);  // Log the full response
+                console.log("Followed Streams Response:", followsData);  // Log the full response
 
                 if (followsData.data && followsData.data.length > 0) {
-                    let followsListHTML = '<h3>Your Followed Channels:</h3><ul>';
-                    followsData.data.forEach(channel => {
-                        followsListHTML += `<li>${channel.to_name}</li>`;
+                    let followsListHTML = '<h3>Your Followed Streams:</h3><ul>';
+                    followsData.data.forEach(stream => {
+                        followsListHTML += `<li>${stream.user_name} - ${stream.title}</li>`;
                     });
                     followsListHTML += '</ul>';
-                    document.getElementById('content').innerHTML += followsListHTML;
+                    document.getElementById('content').innerHTML = followsListHTML;
                 } else {
-                    document.getElementById('content').innerHTML += `<p>You are not following any channels.</p>`;
+                    document.getElementById('content').innerHTML = `<p>You are not following any streams.</p>`;
                 }
 
                 // Check if there is more data (pagination)
                 if (followsData.pagination && followsData.pagination.cursor) {
                     // More pages are available, fetch them
-                    fetchNextPage(token, userId, followsData.pagination.cursor);
+                    fetchNextPage(token, followsData.pagination.cursor);
                 }
             } catch (error) {
-                console.error('Error fetching followed channels:', error);
-                document.getElementById('content').innerHTML += `<p>Error fetching followed channels. Please try again.</p>`;
+                console.error('Error fetching followed streams:', error);
+                document.getElementById('content').innerHTML = `<p>Error fetching followed streams. Please try again.</p>`;
             }
         }
 
-        // Fetch next page of followed channels (for pagination)
-        async function fetchNextPage(token, userId, cursor) {
+        // Fetch next page of followed streams (for pagination)
+        async function fetchNextPage(token, cursor) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
                 'Client-Id': CLIENT_ID
@@ -107,15 +81,15 @@
 
             try {
                 // Fetch the next page using the pagination cursor
-                const followsResponse = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}&after=${cursor}`, { headers });
+                const followsResponse = await fetch(`https://api.twitch.tv/helix/streams/followed?after=${cursor}`, { headers });
                 const followsData = await followsResponse.json();
 
-                console.log("Followed Channels Next Page:", followsData);  // Log the full response for the next page
+                console.log("Followed Streams Next Page:", followsData);  // Log the full response for the next page
 
                 if (followsData.data && followsData.data.length > 0) {
-                    let followsListHTML = '<h3>Your Followed Channels (Continued):</h3><ul>';
-                    followsData.data.forEach(channel => {
-                        followsListHTML += `<li>${channel.to_name}</li>`;
+                    let followsListHTML = '<h3>Your Followed Streams (Continued):</h3><ul>';
+                    followsData.data.forEach(stream => {
+                        followsListHTML += `<li>${stream.user_name} - ${stream.title}</li>`;
                     });
                     followsListHTML += '</ul>';
                     document.getElementById('content').innerHTML += followsListHTML;
@@ -123,11 +97,11 @@
                 
                 // If there's more data, continue fetching
                 if (followsData.pagination && followsData.pagination.cursor) {
-                    fetchNextPage(token, userId, followsData.pagination.cursor);
+                    fetchNextPage(token, followsData.pagination.cursor);
                 }
             } catch (error) {
-                console.error('Error fetching next page of followed channels:', error);
-                document.getElementById('content').innerHTML += `<p>Error fetching next page of followed channels. Please try again.</p>`;
+                console.error('Error fetching next page of followed streams:', error);
+                document.getElementById('content').innerHTML += `<p>Error fetching next page of followed streams. Please try again.</p>`;
             }
         }
     </script>
