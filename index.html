@@ -32,7 +32,7 @@
     </table>
 
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your Twitch Client ID
+        const CLIENT_ID = 'YOUR_TWITCH_CLIENT_ID'; // Replace with your Twitch Client ID
         const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html';
         const SCOPE = 'user:read:follows';
 
@@ -69,7 +69,7 @@
         }
 
         async function fetchAllFollowedChannels(token, userId) {
-            let url = `https://api.twitch.tv/helix/channels/followed?user_id=${userId}&first=100`;
+            let url = `https://api.twitch.tv/helix/users/follows?from_id=${userId}&first=100`;
             let allChannels = [];
             let cursor = null;
 
@@ -85,33 +85,62 @@
                     }
                     
                     cursor = data.pagination?.cursor;
-                    url = cursor ? `https://api.twitch.tv/helix/channels/followed?user_id=${userId}&first=100&after=${cursor}` : null;
+                    url = cursor ? `https://api.twitch.tv/helix/users/follows?from_id=${userId}&first=100&after=${cursor}` : null;
                 }
 
-                let pointsData = getStoredChannelPoints();
-                channelsData = allChannels
-                    .map(follow => ({ 
-                        name: follow.broadcaster_name, 
-                        points: pointsData[follow.broadcaster_id] || 0
-                    }))
-                    .filter(channel => channel.points > 0) // Remove channels with 0 points
-                    .sort((a, b) => b.points - a.points) // Sort by points descending
-                    .slice(0, 100); // Keep only the top 100 channels
+                // Fetch points for each followed channel
+                for (const channel of allChannels) {
+                    getChannelPoints(channel.to_name); // Fetch points for each followed channel
+                }
 
-                updateTable();
             } catch (error) {
                 console.error('Error fetching followed channels:', error);
                 showError('Error fetching followed channels.');
             }
         }
 
-        function getStoredChannelPoints() {
+        async function getChannelPoints(channel) {
+            const oauthToken = localStorage.getItem('accessToken'); // Get your stored access token
+
+            let headers = new Headers();
+            headers.append("client-id", CLIENT_ID);
+            headers.append("authorization", `OAuth ${oauthToken}`);
+            headers.append("Content-Type", "application/json");
+
+            const body = JSON.stringify({
+                "operationName": "ChannelPointsContext",
+                "variables": {
+                    "channelLogin": channel,
+                    "includeGoalTypes": ["CREATOR", "BOOST"]
+                },
+                "extensions": {
+                    "persistedQuery": {
+                        "version": 1,
+                        "sha256Hash": "1530a003a7d374b0380b79db0be0534f30ff46e61cffa2bc0e2468a909fbc024"
+                    }
+                }
+            });
+
+            const fetchOptions = {
+                method: 'POST',
+                headers,
+                body
+            };
+
             try {
-                let storedData = JSON.parse(localStorage.getItem('twilight-ui-store'));
-                return storedData?.channelPoints || {};
+                const response = await fetch("https://gql.twitch.tv/gql", fetchOptions);
+                const result = await response.json();
+                const data = result['data'];
+                const channelName = data['community']['displayName'];
+                const points = data['community']['channel']['self']['communityPoints']['balance'];
+
+                // Update the channelsData and table with the points
+                channelsData.push({ name: channelName, points });
+                updateTable();
+
             } catch (error) {
-                console.error('Error accessing stored channel points:', error);
-                return {};
+                console.error("Error fetching channel points:", error);
+                showError('Error fetching channel points.');
             }
         }
 
