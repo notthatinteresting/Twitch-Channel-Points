@@ -12,35 +12,31 @@
         h1 {
             text-align: center;
         }
-        #content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            justify-items: center;
-        }
-        .channel-card {
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 20px;
-            width: 200px;
-            text-align: center;
-            background-color: #f9f9f9;
-        }
-        .channel-card h3 {
-            margin: 0;
-            font-size: 1.2em;
-        }
-        .channel-card p {
-            margin: 5px 0;
-        }
         .button-container {
-            margin-bottom: 20px;
             text-align: center;
+            margin-bottom: 20px;
         }
-        .button-container button {
+        button {
             padding: 10px;
             font-size: 16px;
             cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+            cursor: pointer;
+        }
+        th:hover {
+            background-color: #e0e0e0;
         }
     </style>
 </head>
@@ -49,14 +45,22 @@
     <div class="button-container">
         <button id="login-button" style="display:none;">Login with Twitch</button>
     </div>
-    <div id="content"></div>
+    
+    <table id="channels-table">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Channel</th>
+                <th onclick="sortTable(1)">Points</th>
+            </tr>
+        </thead>
+        <tbody id="channels-body"></tbody>
+    </table>
 
     <script>
         const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your actual Twitch Client ID
         const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html';
         const SCOPE = 'user:read:follows';
 
-        // Parse access token from URL
         function getAccessTokenFromUrl() {
             const hash = window.location.hash.substring(1);
             const params = new URLSearchParams(hash);
@@ -89,11 +93,11 @@
                 if (data.data?.length > 0) {
                     fetchFollowedChannels(token, data.data[0].id);
                 } else {
-                    document.getElementById('content').innerHTML = `<p>Couldn't fetch user data.</p>`;
+                    document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">Couldn't fetch user data.</td></tr>`;
                 }
             } catch (error) {
                 console.error('Error fetching user data:', error);
-                document.getElementById('content').innerHTML = `<p>Error fetching user data. Please try again.</p>`;
+                document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">Error fetching user data.</td></tr>`;
             }
         }
 
@@ -108,50 +112,54 @@
                 const data = await response.json();
 
                 if (data.data?.length > 0) {
-                    document.getElementById('content').innerHTML = '<h3>Your Followed Channels:</h3><div id="channels-grid"></div>';
+                    document.getElementById('channels-body').innerHTML = '';
                     for (const follow of data.data) {
                         displayChannel(follow.broadcaster_name, follow.broadcaster_id);
                     }
                 } else {
-                    document.getElementById('content').innerHTML = `<p>You are not following any channels.</p>`;
+                    document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">You are not following any channels.</td></tr>`;
                 }
             } catch (error) {
                 console.error('Error fetching followed channels:', error);
-                document.getElementById('content').innerHTML = `<p>Error fetching followed channels. Please try again.</p>`;
+                document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">Error fetching followed channels.</td></tr>`;
             }
         }
 
         async function displayChannel(name, broadcasterId) {
             const channelPoints = await getChannelPoints(broadcasterId);
-            document.getElementById('channels-grid').innerHTML += `
-                <div class="channel-card">
-                    <h3>${name}</h3>
-                    <p>Channel Points: ${channelPoints}</p>
-                </div>`;
+            document.getElementById('channels-body').innerHTML += `
+                <tr>
+                    <td>${name}</td>
+                    <td>${channelPoints}</td>
+                </tr>`;
         }
 
         async function getChannelPoints(broadcasterId) {
-            // Twitch does not provide an API for channel points
-            // You would need to use a browser extension or script that interacts with Twitch's frontend
             return Math.floor(Math.random() * 50000); // Placeholder random points
         }
 
-        function sortChannels(by) {
-            const grid = document.getElementById('channels-grid');
-            if (!grid) return;
-            
-            const channels = Array.from(grid.getElementsByClassName('channel-card'));
+        function sortTable(columnIndex) {
+            const table = document.getElementById('channels-table');
+            const tbody = document.getElementById('channels-body');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            let sortedRows;
 
-            channels.sort((a, b) => {
-                if (by === 'name') {
-                    return a.querySelector('h3').innerText.localeCompare(b.querySelector('h3').innerText);
-                } else if (by === 'points') {
-                    return parseInt(b.querySelector('p').innerText.split(": ")[1]) - parseInt(a.querySelector('p').innerText.split(": ")[1]);
-                }
-            });
+            if (columnIndex === 0) {
+                sortedRows = rows.sort((a, b) => {
+                    const nameA = a.cells[0].innerText.toLowerCase();
+                    const nameB = b.cells[0].innerText.toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
+            } else if (columnIndex === 1) {
+                sortedRows = rows.sort((a, b) => {
+                    const pointsA = parseInt(a.cells[1].innerText);
+                    const pointsB = parseInt(b.cells[1].innerText);
+                    return pointsB - pointsA; // Sort in descending order
+                });
+            }
 
-            grid.innerHTML = ''; // Clear the grid
-            channels.forEach(channel => grid.appendChild(channel)); // Reorder
+            tbody.innerHTML = '';
+            sortedRows.forEach(row => tbody.appendChild(row));
         }
     </script>
 </body>
