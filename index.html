@@ -5,39 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Twitch Channel Points Tracker</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-        h1 {
-            text-align: center;
-        }
-        .button-container {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        button {
-            padding: 10px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: center;
-        }
-        th {
-            background-color: #f4f4f4;
-            cursor: pointer;
-        }
-        th:hover {
-            background-color: #e0e0e0;
-        }
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { text-align: center; }
+        .button-container { text-align: center; margin-bottom: 20px; }
+        button { padding: 10px; font-size: 16px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #f4f4f4; cursor: pointer; }
+        th:hover { background-color: #e0e0e0; }
     </style>
 </head>
 <body>
@@ -57,17 +32,11 @@
     </table>
 
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your actual Twitch Client ID
+        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your Twitch Client ID
         const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html';
         const SCOPE = 'user:read:follows';
 
-        function getAccessTokenFromUrl() {
-            const hash = window.location.hash.substring(1);
-            const params = new URLSearchParams(hash);
-            return params.get("access_token");
-        }
-
-        let accessToken = localStorage.getItem('accessToken') || getAccessTokenFromUrl();
+        let accessToken = localStorage.getItem('accessToken') || new URLSearchParams(window.location.hash.substring(1)).get("access_token");
         let channelsData = [];
         let sortDirection = [1, -1]; // 1 = ascending, -1 = descending
 
@@ -85,56 +54,46 @@
         async function fetchUserId(token) {
             try {
                 const response = await fetch('https://api.twitch.tv/helix/users', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Client-Id': CLIENT_ID
-                    }
+                    headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': CLIENT_ID }
                 });
                 const data = await response.json();
-
                 if (data.data?.length > 0) {
                     fetchFollowedChannels(token, data.data[0].id);
                 } else {
-                    document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">Couldn't fetch user data.</td></tr>`;
+                    showError('Could not fetch user data.');
                 }
             } catch (error) {
                 console.error('Error fetching user data:', error);
-                document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">Error fetching user data.</td></tr>`;
+                showError('Error fetching user data.');
             }
         }
 
-        async function fetchFollowedChannels(token, userId, cursor = '') {
+        async function fetchFollowedChannels(token, userId) {
             try {
                 let url = `https://api.twitch.tv/helix/channels/followed?user_id=${userId}&first=100`;
-                if (cursor) url += `&after=${cursor}`;
-
                 const response = await fetch(url, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Client-Id': CLIENT_ID
-                    }
+                    headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': CLIENT_ID }
                 });
                 const data = await response.json();
 
                 if (data.data?.length > 0) {
-                    for (const follow of data.data) {
-                        channelsData.push({
-                            name: follow.broadcaster_name,
-                            points: await getChannelPoints(follow.broadcaster_id)
-                        });
-                    }
-                    
-                    if (data.pagination?.cursor) {
-                        fetchFollowedChannels(token, userId, data.pagination.cursor);
-                    } else {
-                        updateTable();
-                    }
-                } else if (channelsData.length === 0) {
-                    document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">You are not following any channels.</td></tr>`;
+                    let promises = data.data.map(async (follow) => {
+                        let points = await getChannelPoints(follow.broadcaster_id);
+                        return { name: follow.broadcaster_name, points };
+                    });
+
+                    channelsData = (await Promise.all(promises))
+                        .filter(channel => channel.points > 0) // Remove channels with 0 points
+                        .sort((a, b) => b.points - a.points) // Sort by points descending
+                        .slice(0, 100); // Keep only the top 100 channels
+
+                    updateTable();
+                } else {
+                    showError('No followed channels found.');
                 }
             } catch (error) {
                 console.error('Error fetching followed channels:', error);
-                document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">Error fetching followed channels.</td></tr>`;
+                showError('Error fetching followed channels.');
             }
         }
 
@@ -146,11 +105,7 @@
             const tbody = document.getElementById('channels-body');
             tbody.innerHTML = '';
             channelsData.forEach(channel => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${channel.name}</td>
-                        <td>${channel.points}</td>
-                    </tr>`;
+                tbody.innerHTML += `<tr><td>${channel.name}</td><td>${channel.points}</td></tr>`;
             });
         }
 
@@ -165,6 +120,10 @@
 
             sortDirection[columnIndex] *= -1; // Toggle sorting direction
             updateTable();
+        }
+
+        function showError(message) {
+            document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">${message}</td></tr>`;
         }
     </script>
 </body>
