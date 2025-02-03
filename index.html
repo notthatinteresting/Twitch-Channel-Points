@@ -17,7 +17,7 @@
 
         #content {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
             justify-items: center;
         }
@@ -115,17 +115,15 @@
                 console.log("Followed Channels Response:", followsData);
 
                 if (followsData.data && followsData.data.length > 0) {
-                    let followsListHTML = '<h3>Your Followed Channels:</h3><div class="channels-grid">';
+                    let followsListHTML = '<h3>Your Followed Channels:</h3><div id="channels-grid">';
                     followsData.data.forEach(follow => {
-                        // Get the broadcaster's name and game name as fallback if title is unavailable
+                        // Get the broadcaster's name and channel points
                         const name = follow.broadcaster_name;
-                        const game = follow.game_name || 'No Game Info';
-                        const channelPoints = follow.view_count || 0; // Assuming view_count as a fallback for channel points
-                        
+                        const channelPoints = follow.view_count || 0; // Assuming view_count as a placeholder for channel points
+
                         followsListHTML += `
-                            <div class="channel-card" data-points="${channelPoints}">
+                            <div class="channel-card">
                                 <h3>${name}</h3>
-                                <p>Game: ${game}</p>
                                 <p>Channel Points: ${channelPoints}</p>
                             </div>`;
                     });
@@ -159,17 +157,15 @@
                     let followsListHTML = '';
                     followsData.data.forEach(follow => {
                         const name = follow.broadcaster_name;
-                        const game = follow.game_name || 'No Game Info';
-                        const channelPoints = follow.view_count || 0; // Fallback
+                        const channelPoints = follow.view_count || 0; // Fallback for channel points
 
                         followsListHTML += `
-                            <div class="channel-card" data-points="${channelPoints}">
+                            <div class="channel-card">
                                 <h3>${name}</h3>
-                                <p>Game: ${game}</p>
                                 <p>Channel Points: ${channelPoints}</p>
                             </div>`;
                     });
-                    document.getElementById('content').innerHTML += followsListHTML;
+                    document.getElementById('channels-grid').innerHTML += followsListHTML;
                 }
 
                 if (followsData.pagination && followsData.pagination.cursor) {
@@ -183,14 +179,14 @@
 
         // Sort function for sorting the channels by name or points
         function sortChannels(by) {
-            const grid = document.getElementById('content').getElementsByClassName('channels-grid')[0];
+            const grid = document.getElementById('channels-grid');
             const channels = Array.from(grid.getElementsByClassName('channel-card'));
 
             channels.sort((a, b) => {
                 if (by === 'name') {
                     return a.getElementsByTagName('h3')[0].innerText.localeCompare(b.getElementsByTagName('h3')[0].innerText);
                 } else if (by === 'points') {
-                    return parseInt(b.getAttribute('data-points')) - parseInt(a.getAttribute('data-points'));
+                    return parseInt(b.querySelector('p').innerText.replace('Channel Points: ', '')) - parseInt(a.querySelector('p').innerText.replace('Channel Points: ', ''));
                 }
             });
 
