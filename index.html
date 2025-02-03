@@ -103,7 +103,7 @@
 
         async function fetchFollowedChannels(token, userId) {
             try {
-                const response = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, {
+                const response = await fetch(`https://api.twitch.tv/helix/channels/followed?user_id=${userId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Client-Id': CLIENT_ID
@@ -114,7 +114,7 @@
                 if (data.data?.length > 0) {
                     document.getElementById('channels-body').innerHTML = '';
                     for (const follow of data.data) {
-                        displayChannel(follow.to_name);
+                        displayChannel(follow.broadcaster_name);
                     }
                 } else {
                     document.getElementById('channels-body').innerHTML = `<tr><td colspan="2">You are not following any channels.</td></tr>`;
