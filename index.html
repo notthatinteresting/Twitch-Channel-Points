@@ -32,7 +32,7 @@
     </table>
 
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your Twitch Client ID
+        const CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko'; // Your Twitch Client ID
         const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html';
         const SCOPE = 'user:read:follows';
 
@@ -58,7 +58,7 @@
                 });
                 const data = await response.json();
                 if (data.data?.length > 0) {
-                    fetchAllFollowedChannels(token, data.data[0].id);
+                    fetchFollowedChannels(token, data.data[0].id);
                 } else {
                     showError('Could not fetch user data.');
                 }
@@ -68,8 +68,8 @@
             }
         }
 
-        async function fetchAllFollowedChannels(token, userId) {
-            let url = `https://api.twitch.tv/helix/users/follows?from_id=${userId}&first=100`;
+        async function fetchFollowedChannels(token, userId) {
+            let url = `https://api.twitch.tv/helix/channels/followed?user_id=${userId}&first=100`;
             let allChannels = [];
             let cursor = null;
 
@@ -85,12 +85,12 @@
                     }
                     
                     cursor = data.pagination?.cursor;
-                    url = cursor ? `https://api.twitch.tv/helix/users/follows?from_id=${userId}&first=100&after=${cursor}` : null;
+                    url = cursor ? `https://api.twitch.tv/helix/channels/followed?user_id=${userId}&first=100&after=${cursor}` : null;
                 }
 
-                // Fetch points for each followed channel
+                // Fetch points for each followed channel using GraphQL query
                 for (const channel of allChannels) {
-                    getChannelPoints(channel.to_name); // Fetch points for each followed channel
+                    getChannelPoints(channel.broadcaster_name); // Use broadcaster_name from the API response
                 }
 
             } catch (error) {
