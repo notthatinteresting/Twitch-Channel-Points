@@ -4,29 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Twitch Channel Points Tracker</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        table, th, td {
-            border: 1px solid black;
-        }
-
-        th, td {
-            padding: 8px;
-            text-align: left;
-        }
-
-        th {
-            cursor: pointer;
-        }
-
-        .offline {
-            background-color: #f8f8f8;
-        }
-    </style>
 </head>
 <body>
     <h1>Welcome to the Twitch Channel Points Tracker</h1>
@@ -72,8 +49,8 @@
                     const userId = userData.data[0].id;
                     console.log("User ID:", userId);  // Debugging: log the user ID
 
-                    // Now fetch the user's followed channels using the user ID
-                    fetchFollowedChannels(token, userId);
+                    // Now fetch the user's followed streams using the user ID
+                    fetchFollowedStreams(token, userId);
                 } else {
                     document.getElementById('content').innerHTML = `<p>Couldn't fetch user data.</p>`;
                 }
@@ -83,107 +60,73 @@
             }
         }
 
-        // Fetch followed channels using the /channels/followed endpoint (to get both online and offline)
-        async function fetchFollowedChannels(token, userId) {
+        // Fetch followed streams using the /streams/followed endpoint
+        async function fetchFollowedStreams(token, userId) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
                 'Client-Id': CLIENT_ID
             };
 
             try {
-                // Fetch followed channels from the non-documented endpoint (assumed to work as requested)
+                // Fetch followed streams (using the correct API endpoint)
                 const followsResponse = await fetch(`https://api.twitch.tv/helix/channels/followed?user_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
-
-                console.log("Followed Channels Response:", followsData);  // Log the full response
+                
+                console.log("Followed Streams Response:", followsData);  // Log the full response
 
                 if (followsData.data && followsData.data.length > 0) {
-                    let followedChannels = followsData.data.map(follow => {
-                        return {
-                            name: follow.name,
-                            channel_id: follow.id,
-                            points: Math.floor(Math.random() * 10000),  // Mock value
-                            is_online: false,  // Mocked as offline by default
-                        };
+                    let followsListHTML = '<h3>Your Followed Streams:</h3><ul>';
+                    followsData.data.forEach(stream => {
+                        followsListHTML += `<li>${stream.user_name} - ${stream.title}</li>`;
                     });
-
-                    // Now, for each followed channel, check if it's online
-                    await checkChannelOnlineStatus(token, followedChannels);
+                    followsListHTML += '</ul>';
+                    document.getElementById('content').innerHTML = followsListHTML;
                 } else {
-                    document.getElementById('content').innerHTML = `<p>You are not following any channels.</p>`;
+                    document.getElementById('content').innerHTML = `<p>You are not following any streams.</p>`;
+                }
+
+                // Check if there is more data (pagination)
+                if (followsData.pagination && followsData.pagination.cursor) {
+                    // More pages are available, fetch them
+                    fetchNextPage(token, followsData.pagination.cursor);
                 }
             } catch (error) {
-                console.error('Error fetching followed channels:', error);
-                document.getElementById('content').innerHTML = `<p>Error fetching followed channels. Please try again.</p>`;
+                console.error('Error fetching followed streams:', error);
+                document.getElementById('content').innerHTML = `<p>Error fetching followed streams. Please try again.</p>`;
             }
         }
 
-        // Check if channels are online or offline using the /streams endpoint
-        async function checkChannelOnlineStatus(token, followedChannels) {
+        // Fetch next page of followed streams (for pagination)
+        async function fetchNextPage(token, cursor) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
                 'Client-Id': CLIENT_ID
             };
 
             try {
-                // Get the online status of the followed channels
-                const streamsResponse = await fetch(`https://api.twitch.tv/helix/streams?user_id=${followedChannels.map(channel => channel.channel_id).join('&user_id=')}`, { headers });
-                const streamsData = await streamsResponse.json();
+                // Fetch the next page using the pagination cursor
+                const followsResponse = await fetch(`https://api.twitch.tv/helix/streams/followed?after=${cursor}`, { headers });
+                const followsData = await followsResponse.json();
 
-                // Mark the channels as online if they appear in the streams data
-                streamsData.data.forEach(stream => {
-                    const channel = followedChannels.find(f => f.channel_id === stream.user_id);
-                    if (channel) {
-                        channel.is_online = true;
-                    }
-                });
+                console.log("Followed Streams Next Page:", followsData);  // Log the full response for the next page
 
-                displayChannels(followedChannels);  // Display the channels in the table
+                if (followsData.data && followsData.data.length > 0) {
+                    let followsListHTML = '<h3>Your Followed Streams (Continued):</h3><ul>';
+                    followsData.data.forEach(stream => {
+                        followsListHTML += `<li>${stream.user_name} - ${stream.title}</li>`;
+                    });
+                    followsListHTML += '</ul>';
+                    document.getElementById('content').innerHTML += followsListHTML;
+                }
+                
+                // If there's more data, continue fetching
+                if (followsData.pagination && followsData.pagination.cursor) {
+                    fetchNextPage(token, followsData.pagination.cursor);
+                }
             } catch (error) {
-                console.error('Error checking channel online status:', error);
+                console.error('Error fetching next page of followed streams:', error);
+                document.getElementById('content').innerHTML += `<p>Error fetching next page of followed streams. Please try again.</p>`;
             }
-        }
-
-        // Display channels in a sortable grid
-        function displayChannels(channels) {
-            let tableHTML = `<h3>Your Followed Channels</h3>
-                             <table id="channels-table">
-                                 <thead>
-                                     <tr>
-                                         <th onclick="sortTable(0)">Channel Name</th>
-                                         <th onclick="sortTable(1)">Points</th>
-                                         <th onclick="sortTable(2)">Online Status</th>
-                                     </tr>
-                                 </thead>
-                                 <tbody>`;
-            channels.forEach(channel => {
-                tableHTML += `<tr class="${channel.is_online ? '' : 'offline'}">
-                                  <td>${channel.name}</td>
-                                  <td>${channel.points}</td>
-                                  <td>${channel.is_online ? 'Online' : 'Offline'}</td>
-                              </tr>`;
-            });
-            tableHTML += `</tbody></table>`;
-            document.getElementById('content').innerHTML = tableHTML;
-        }
-
-        // Sort the table by column
-        function sortTable(n) {
-            const table = document.getElementById("channels-table");
-            const rows = Array.from(table.rows).slice(1);
-            let sortedRows;
-
-            if (n === 0) {
-                sortedRows = rows.sort((a, b) => a.cells[n].innerText.localeCompare(b.cells[n].innerText));
-            } else {
-                sortedRows = rows.sort((a, b) => {
-                    return parseInt(a.cells[n].innerText) - parseInt(b.cells[n].innerText);
-                });
-            }
-
-            // Rebuild the table
-            rows.forEach(row => table.deleteRow(row.rowIndex));
-            sortedRows.forEach(row => table.appendChild(row));
         }
     </script>
 </body>
