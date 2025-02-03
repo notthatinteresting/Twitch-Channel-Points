@@ -11,7 +11,7 @@
     <button id="login-button" style="display:none;">Login with Twitch</button>
 
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55';  // Replace with your actual Twitch Client ID
+        const CLIENT_ID = 'YOUR_TWITCH_CLIENT_ID';  // Replace with your actual Twitch Client ID
         const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html'; // This is where Twitch will redirect after login
         const SCOPE = 'user:read:follows';  // The permission you need to access the user's followed channels
 
@@ -70,8 +70,10 @@
             };
 
             try {
+                // Fetch followed channels (using the correct API endpoint)
                 const followsResponse = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
+                
                 console.log("Followed Channels Response:", followsData);  // Log the full response
 
                 if (followsData.data && followsData.data.length > 0) {
@@ -84,9 +86,48 @@
                 } else {
                     document.getElementById('content').innerHTML += `<p>You are not following any channels.</p>`;
                 }
+
+                // Check if there is more data (pagination)
+                if (followsData.pagination && followsData.pagination.cursor) {
+                    // More pages are available, fetch them
+                    fetchNextPage(token, userId, followsData.pagination.cursor);
+                }
             } catch (error) {
                 console.error('Error fetching followed channels:', error);
                 document.getElementById('content').innerHTML += `<p>Error fetching followed channels. Please try again.</p>`;
+            }
+        }
+
+        // Fetch next page of followed channels (for pagination)
+        async function fetchNextPage(token, userId, cursor) {
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Client-Id': CLIENT_ID
+            };
+
+            try {
+                // Fetch the next page using the pagination cursor
+                const followsResponse = await fetch(`https://api.twitch.tv/helix/users/follows?from_id=${userId}&after=${cursor}`, { headers });
+                const followsData = await followsResponse.json();
+
+                console.log("Followed Channels Next Page:", followsData);  // Log the full response for the next page
+
+                if (followsData.data && followsData.data.length > 0) {
+                    let followsListHTML = '<h3>Your Followed Channels (Continued):</h3><ul>';
+                    followsData.data.forEach(channel => {
+                        followsListHTML += `<li>${channel.to_name}</li>`;
+                    });
+                    followsListHTML += '</ul>';
+                    document.getElementById('content').innerHTML += followsListHTML;
+                }
+                
+                // If there's more data, continue fetching
+                if (followsData.pagination && followsData.pagination.cursor) {
+                    fetchNextPage(token, userId, followsData.pagination.cursor);
+                }
+            } catch (error) {
+                console.error('Error fetching next page of followed channels:', error);
+                document.getElementById('content').innerHTML += `<p>Error fetching next page of followed channels. Please try again.</p>`;
             }
         }
     </script>
