@@ -4,35 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Twitch Channel Points Tracker</title>
+    <style>
+        /* Basic styling for the grid layout */
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        #content {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            justify-items: center;
+        }
+
+        .channel-card {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            width: 200px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+
+        .channel-card h3 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        .channel-card p {
+            margin: 5px 0;
+        }
+
+        .button-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .button-container button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Twitch Channel Points Tracker</h1>
+    <h1>Twitch Channel Points Tracker</h1>
+    <div class="button-container">
+        <button id="login-button" style="display:none;">Login with Twitch</button>
+    </div>
     <div id="content"></div>
-    <button id="login-button" style="display:none;">Login with Twitch</button>
 
     <script>
-        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55';  // Replace with your actual Twitch Client ID
-        const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html'; // This is where Twitch will redirect after login
-        const SCOPE = 'user:read:follows';  // The permission you need to access the user's followed channels
+        const CLIENT_ID = 'jlj5h3ie7t4q1p6oxft1asrum1jl55'; // Replace with your actual Twitch Client ID
+        const REDIRECT_URI = 'https://notthatinteresting.github.io/Twitch-Channel-Points/callback.html'; // Redirect URI after login
+        const SCOPE = 'user:read:follows'; // The permission to access user's followed channels
 
         // Check if the access token is already saved in localStorage
         const accessToken = localStorage.getItem('accessToken');
-        console.log("Access Token from localStorage:", accessToken);  // Debugging log
+        console.log("Access Token from localStorage:", accessToken);
 
         if (accessToken) {
-            // If accessToken exists, proceed to fetch user data
             fetchUserId(accessToken);
         } else {
-            // If no access token found, show the login button
             document.getElementById('login-button').style.display = 'inline-block';
         }
 
-        // If the login button is clicked, initiate the Twitch login flow
         document.getElementById('login-button').addEventListener('click', () => {
             window.location.href = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=token&scope=${SCOPE}`;
         });
 
-        // Fetch user ID using the /users endpoint
         async function fetchUserId(token) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
@@ -40,16 +85,13 @@
             };
 
             try {
-                // Fetch user data (user ID)
                 const userResponse = await fetch('https://api.twitch.tv/helix/users', { headers });
                 const userData = await userResponse.json();
-                console.log("User Data:", userData);  // Debugging: log the user data
+                console.log("User Data:", userData);
 
                 if (userData.data && userData.data.length > 0) {
                     const userId = userData.data[0].id;
-                    console.log("User ID:", userId);  // Debugging: log the user ID
-
-                    // Now fetch the user's followed channels using the user ID
+                    console.log("User ID:", userId);
                     fetchFollowedChannels(token, userId);
                 } else {
                     document.getElementById('content').innerHTML = `<p>Couldn't fetch user data.</p>`;
@@ -60,7 +102,6 @@
             }
         }
 
-        // Fetch followed channels using the /channels/followed endpoint
         async function fetchFollowedChannels(token, userId) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
@@ -68,27 +109,32 @@
             };
 
             try {
-                // Fetch followed channels (using the correct API endpoint)
                 const followsResponse = await fetch(`https://api.twitch.tv/helix/channels/followed?user_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
 
-                console.log("Followed Channels Response:", followsData);  // Log the full response to check the structure
+                console.log("Followed Channels Response:", followsData);
 
                 if (followsData.data && followsData.data.length > 0) {
-                    let followsListHTML = '<h3>Your Followed Channels:</h3><ul>';
+                    let followsListHTML = '<h3>Your Followed Channels:</h3><div class="channels-grid">';
                     followsData.data.forEach(follow => {
-                        console.log("Follow:", follow);  // Log each individual channel to check its structure
-
-                        // Use broadcaster_name and title
-                        followsListHTML += `<li>${follow.broadcaster_name} - ${follow.title}</li>`;
+                        // Get the broadcaster's name and game name as fallback if title is unavailable
+                        const name = follow.broadcaster_name;
+                        const game = follow.game_name || 'No Game Info';
+                        const channelPoints = follow.view_count || 0; // Assuming view_count as a fallback for channel points
+                        
+                        followsListHTML += `
+                            <div class="channel-card" data-points="${channelPoints}">
+                                <h3>${name}</h3>
+                                <p>Game: ${game}</p>
+                                <p>Channel Points: ${channelPoints}</p>
+                            </div>`;
                     });
-                    followsListHTML += '</ul>';
+                    followsListHTML += '</div>';
                     document.getElementById('content').innerHTML = followsListHTML;
                 } else {
                     document.getElementById('content').innerHTML = `<p>You are not following any channels.</p>`;
                 }
 
-                // Check if there is more data (pagination)
                 if (followsData.pagination && followsData.pagination.cursor) {
                     fetchNextPage(token, followsData.pagination.cursor, userId);
                 }
@@ -98,7 +144,6 @@
             }
         }
 
-        // Fetch next page of followed channels (for pagination)
         async function fetchNextPage(token, cursor, userId) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
@@ -106,22 +151,27 @@
             };
 
             try {
-                // Fetch the next page using the pagination cursor
                 const followsResponse = await fetch(`https://api.twitch.tv/helix/channels/followed?after=${cursor}&user_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
-
-                console.log("Followed Channels Next Page:", followsData);  // Log the full response for the next page
+                console.log("Followed Channels Next Page:", followsData);
 
                 if (followsData.data && followsData.data.length > 0) {
-                    let followsListHTML = '<h3>Your Followed Channels (Continued):</h3><ul>';
+                    let followsListHTML = '';
                     followsData.data.forEach(follow => {
-                        followsListHTML += `<li>${follow.broadcaster_name} - ${follow.title}</li>`;
+                        const name = follow.broadcaster_name;
+                        const game = follow.game_name || 'No Game Info';
+                        const channelPoints = follow.view_count || 0; // Fallback
+
+                        followsListHTML += `
+                            <div class="channel-card" data-points="${channelPoints}">
+                                <h3>${name}</h3>
+                                <p>Game: ${game}</p>
+                                <p>Channel Points: ${channelPoints}</p>
+                            </div>`;
                     });
-                    followsListHTML += '</ul>';
                     document.getElementById('content').innerHTML += followsListHTML;
                 }
 
-                // If there's more data, continue fetching
                 if (followsData.pagination && followsData.pagination.cursor) {
                     fetchNextPage(token, followsData.pagination.cursor, userId);
                 }
@@ -129,6 +179,23 @@
                 console.error('Error fetching next page of followed channels:', error);
                 document.getElementById('content').innerHTML += `<p>Error fetching next page of followed channels. Please try again.</p>`;
             }
+        }
+
+        // Sort function for sorting the channels by name or points
+        function sortChannels(by) {
+            const grid = document.getElementById('content').getElementsByClassName('channels-grid')[0];
+            const channels = Array.from(grid.getElementsByClassName('channel-card'));
+
+            channels.sort((a, b) => {
+                if (by === 'name') {
+                    return a.getElementsByTagName('h3')[0].innerText.localeCompare(b.getElementsByTagName('h3')[0].innerText);
+                } else if (by === 'points') {
+                    return parseInt(b.getAttribute('data-points')) - parseInt(a.getAttribute('data-points'));
+                }
+            });
+
+            grid.innerHTML = ''; // Clear the grid
+            channels.forEach(channel => grid.appendChild(channel)); // Reorder the grid
         }
     </script>
 </body>
