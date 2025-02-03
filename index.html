@@ -52,45 +52,49 @@
         });
 
         async function fetchUserId(token) {
+            const url = 'https://api.twitch.tv/helix/users';
+            
             try {
-                const response = await fetch('https://api.twitch.tv/helix/users', {
-                    headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': CLIENT_ID }
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Client-Id': CLIENT_ID
+                    }
                 });
                 const data = await response.json();
-                if (data.data?.length > 0) {
-                    fetchFollowedChannels(token, data.data[0].id);
-                } else {
-                    showError('Could not fetch user data.');
-                }
+                
+                const userId = data.data[0].id;
+                fetchFollowedChannels(userId, token);
             } catch (error) {
-                console.error('Error fetching user data:', error);
-                showError('Error fetching user data.');
+                console.error('Error fetching user ID:', error);
+                showError('Error fetching user ID.');
             }
         }
 
-        async function fetchFollowedChannels(token, userId) {
-            let url = `https://api.twitch.tv/helix/channels/followed?user_id=${userId}&first=100`;
+        async function fetchFollowedChannels(userId, token) {
+            let url = `https://api.twitch.tv/helix/channels/followed?from_id=${userId}&first=100`;  // Use the correct endpoint
             let allChannels = [];
             let cursor = null;
 
             try {
-                while (url) {
-                    const response = await fetch(url, {
-                        headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': CLIENT_ID }
-                    });
-                    const data = await response.json();
-                    
-                    if (data.data?.length > 0) {
-                        allChannels.push(...data.data);
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Client-Id': CLIENT_ID
                     }
-                    
-                    cursor = data.pagination?.cursor;
-                    url = cursor ? `https://api.twitch.tv/helix/channels/followed?user_id=${userId}&first=100&after=${cursor}` : null;
+                });
+                const data = await response.json();
+
+                if (data.data?.length > 0) {
+                    allChannels.push(...data.data);
                 }
+
+                cursor = data.pagination?.cursor;
+                url = cursor ? `https://api.twitch.tv/helix/channels/followed?from_id=${userId}&first=100&after=${cursor}` : null;
 
                 // Fetch points for each followed channel using GraphQL query
                 for (const channel of allChannels) {
-                    getChannelPoints(channel.broadcaster_name); // Use broadcaster_name from the API response
+                    getChannelPoints(channel.broadcaster_name); // Use the 'broadcaster_name' for the followed channel
                 }
 
             } catch (error) {
