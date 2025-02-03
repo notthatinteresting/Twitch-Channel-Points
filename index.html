@@ -49,8 +49,8 @@
                     const userId = userData.data[0].id;
                     console.log("User ID:", userId);  // Debugging: log the user ID
 
-                    // Now fetch the user's followed streams using the user ID
-                    fetchFollowedStreams(token, userId);
+                    // Now fetch the user's followed channels using the user ID
+                    fetchFollowedChannels(token, userId);
                 } else {
                     document.getElementById('content').innerHTML = `<p>Couldn't fetch user data.</p>`;
                 }
@@ -60,44 +60,44 @@
             }
         }
 
-        // Fetch followed streams using the /streams/followed endpoint
-        async function fetchFollowedStreams(token, userId) {
+        // Fetch followed channels using the correct /channels/followed endpoint
+        async function fetchFollowedChannels(token, userId) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
                 'Client-Id': CLIENT_ID
             };
 
             try {
-                // Fetch followed streams (using the correct API endpoint)
+                // Fetch followed channels (using the correct API endpoint)
                 const followsResponse = await fetch(`https://api.twitch.tv/helix/channels/followed?user_id=${userId}`, { headers });
                 const followsData = await followsResponse.json();
                 
-                console.log("Followed Streams Response:", followsData);  // Log the full response
+                console.log("Followed Channels Response:", followsData);  // Log the full response
 
                 if (followsData.data && followsData.data.length > 0) {
-                    let followsListHTML = '<h3>Your Followed Streams:</h3><ul>';
-                    followsData.data.forEach(stream => {
-                        followsListHTML += `<li>${stream.user_name} - ${stream.title}</li>`;
+                    let followsListHTML = '<h3>Your Followed Channels:</h3><ul>';
+                    followsData.data.forEach(follow => {
+                        followsListHTML += `<li>${follow.user_name} - ${follow.title}</li>`;  // Correctly access the channel name
                     });
                     followsListHTML += '</ul>';
                     document.getElementById('content').innerHTML = followsListHTML;
                 } else {
-                    document.getElementById('content').innerHTML = `<p>You are not following any streams.</p>`;
+                    document.getElementById('content').innerHTML = `<p>You are not following any channels.</p>`;
                 }
 
                 // Check if there is more data (pagination)
                 if (followsData.pagination && followsData.pagination.cursor) {
                     // More pages are available, fetch them
-                    fetchNextPage(token, followsData.pagination.cursor);
+                    fetchNextPage(token, followsData.pagination.cursor, userId);
                 }
             } catch (error) {
-                console.error('Error fetching followed streams:', error);
-                document.getElementById('content').innerHTML = `<p>Error fetching followed streams. Please try again.</p>`;
+                console.error('Error fetching followed channels:', error);
+                document.getElementById('content').innerHTML = `<p>Error fetching followed channels. Please try again.</p>`;
             }
         }
 
-        // Fetch next page of followed streams (for pagination)
-        async function fetchNextPage(token, cursor) {
+        // Fetch next page of followed channels (for pagination)
+        async function fetchNextPage(token, cursor, userId) {
             const headers = {
                 'Authorization': `Bearer ${token}`,
                 'Client-Id': CLIENT_ID
@@ -105,15 +105,15 @@
 
             try {
                 // Fetch the next page using the pagination cursor
-                const followsResponse = await fetch(`https://api.twitch.tv/helix/streams/followed?after=${cursor}`, { headers });
+                const followsResponse = await fetch(`https://api.twitch.tv/helix/channels/followed?user_id=${userId}&after=${cursor}`, { headers });
                 const followsData = await followsResponse.json();
 
-                console.log("Followed Streams Next Page:", followsData);  // Log the full response for the next page
+                console.log("Followed Channels Next Page:", followsData);  // Log the full response for the next page
 
                 if (followsData.data && followsData.data.length > 0) {
-                    let followsListHTML = '<h3>Your Followed Streams (Continued):</h3><ul>';
-                    followsData.data.forEach(stream => {
-                        followsListHTML += `<li>${stream.user_name} - ${stream.title}</li>`;
+                    let followsListHTML = '<h3>Your Followed Channels (Continued):</h3><ul>';
+                    followsData.data.forEach(follow => {
+                        followsListHTML += `<li>${follow.user_name} - ${follow.title}</li>`;  // Correctly access the channel name
                     });
                     followsListHTML += '</ul>';
                     document.getElementById('content').innerHTML += followsListHTML;
@@ -121,11 +121,11 @@
                 
                 // If there's more data, continue fetching
                 if (followsData.pagination && followsData.pagination.cursor) {
-                    fetchNextPage(token, followsData.pagination.cursor);
+                    fetchNextPage(token, followsData.pagination.cursor, userId);
                 }
             } catch (error) {
-                console.error('Error fetching next page of followed streams:', error);
-                document.getElementById('content').innerHTML += `<p>Error fetching next page of followed streams. Please try again.</p>`;
+                console.error('Error fetching next page of followed channels:', error);
+                document.getElementById('content').innerHTML += `<p>Error fetching next page of followed channels. Please try again.</p>`;
             }
         }
     </script>
